@@ -34,10 +34,13 @@ step_trainer_landing_node1779701633399 = glueContext.create_dynamic_frame.from_o
 
 # Script generated for node SQL Query
 SqlQuery0 = '''
-select st.*
-from st
-inner join c
-on st.serialnumber=c.serialnumber
+SELECT DISTINCT
+    st.sensorreadingtime,
+    st.serialnumber,
+    st.distancefromobject
+FROM st
+INNER JOIN c
+ON st.serialnumber = c.serialnumber
 '''
 SQLQuery_node1779701636257 = sparkSqlQuery(glueContext, query = SqlQuery0, mapping = {"st":step_trainer_landing_node1779701633399, "c":customer_curated_node1779701632575}, transformation_ctx = "SQLQuery_node1779701636257")
 
