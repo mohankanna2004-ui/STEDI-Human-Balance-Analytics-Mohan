@@ -5,7 +5,13 @@ from pyspark.context import SparkContext
 from awsglue.context import GlueContext
 from awsglue.job import Job
 from awsgluedq.transforms import EvaluateDataQuality
+from awsglue import DynamicFrame
 
+def sparkSqlQuery(glueContext, query, mapping, transformation_ctx) -> DynamicFrame:
+    for alias, frame in mapping.items():
+        frame.toDF().createOrReplaceTempView(alias)
+    result = spark.sql(query)
+    return DynamicFrame.fromDF(result, glueContext, transformation_ctx)
 args = getResolvedOptions(sys.argv, ['JOB_NAME'])
 sc = SparkContext()
 glueContext = GlueContext(sc)
@@ -20,14 +26,25 @@ DEFAULT_DATA_QUALITY_RULESET = """
     ]
 """
 
-# Script generated for node step-trainer landing to trusted
-steptrainerlandingtotrusted_node1779541506466 = glueContext.create_dynamic_frame.from_options(format_options={"multiLine": "false"}, connection_type="s3", format="json", connection_options={"paths": ["s3://stedi-human-sample/step_trainer/landing"], "recurse": True}, transformation_ctx="steptrainerlandingtotrusted_node1779541506466")
+# Script generated for node customer_curated
+customer_curated_node1779701632575 = glueContext.create_dynamic_frame.from_options(format_options={"quoteChar": "\"", "withHeader": True, "separator": ",", "optimizePerformance": False}, connection_type="s3", format="csv", connection_options={"paths": ["s3://stedi-lake-house-mohan/customer_curated/"], "recurse": True}, transformation_ctx="customer_curated_node1779701632575")
 
-# Script generated for node step_trainer landing to trusted
-step_trainerlandingtotrusted_node1779541513369 = ApplyMapping.apply(frame=steptrainerlandingtotrusted_node1779541506466, mappings=[("sensorReadingTime", "long", "sensorReadingTime", "long"), ("serialNumber", "string", "serialNumber", "string"), ("distanceFromObject", "int", "distanceFromObject", "int")], transformation_ctx="step_trainerlandingtotrusted_node1779541513369")
+# Script generated for node step_trainer_landing
+step_trainer_landing_node1779701633399 = glueContext.create_dynamic_frame.from_options(format_options={"multiLine": "false"}, connection_type="s3", format="json", connection_options={"paths": ["s3://stedi-lake-house-mohan/step_trainer_landing/"], "recurse": True}, transformation_ctx="step_trainer_landing_node1779701633399")
 
-# Script generated for node trusted step_trainer landing 
-EvaluateDataQuality().process_rows(frame=step_trainerlandingtotrusted_node1779541513369, ruleset=DEFAULT_DATA_QUALITY_RULESET, publishing_options={"dataQualityEvaluationContext": "EvaluateDataQuality_node1779537994871", "enableDataQualityResultsPublishing": True}, additional_options={"dataQualityResultsPublishing.strategy": "BEST_EFFORT", "observations.scope": "ALL"})
-trustedstep_trainerlanding_node1779541517282 = glueContext.write_dynamic_frame.from_options(frame=step_trainerlandingtotrusted_node1779541513369, connection_type="s3", format="json", connection_options={"path": "s3://stedi-human-sample/step_trainer/trusted/", "partitionKeys": []}, transformation_ctx="trustedstep_trainerlanding_node1779541517282")
+# Script generated for node SQL Query
+SqlQuery0 = '''
+select st.*
+from st
+inner join c
+on st.serialnumber=c.serialnumber
+'''
+SQLQuery_node1779701636257 = sparkSqlQuery(glueContext, query = SqlQuery0, mapping = {"st":step_trainer_landing_node1779701633399, "c":customer_curated_node1779701632575}, transformation_ctx = "SQLQuery_node1779701636257")
 
+# Script generated for node step_trainer_trusted
+EvaluateDataQuality().process_rows(frame=SQLQuery_node1779701636257, ruleset=DEFAULT_DATA_QUALITY_RULESET, publishing_options={"dataQualityEvaluationContext": "EvaluateDataQuality_node1779700199933", "enableDataQualityResultsPublishing": True}, additional_options={"dataQualityResultsPublishing.strategy": "BEST_EFFORT", "observations.scope": "ALL"})
+step_trainer_trusted_node1779701639724 = glueContext.getSink(path="s3://stedi-lake-house-mohan/step_trainer_trusted/", connection_type="s3", updateBehavior="UPDATE_IN_DATABASE", partitionKeys=[], enableUpdateCatalog=True, transformation_ctx="step_trainer_trusted_node1779701639724")
+step_trainer_trusted_node1779701639724.setCatalogInfo(catalogDatabase="stedi_db",catalogTableName="step_trainer_trusted")
+step_trainer_trusted_node1779701639724.setFormat("json")
+step_trainer_trusted_node1779701639724.writeFrame(SQLQuery_node1779701636257)
 job.commit()
