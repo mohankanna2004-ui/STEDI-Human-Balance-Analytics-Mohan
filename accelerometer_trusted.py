@@ -5,7 +5,13 @@ from pyspark.context import SparkContext
 from awsglue.context import GlueContext
 from awsglue.job import Job
 from awsgluedq.transforms import EvaluateDataQuality
+from awsglue import DynamicFrame
 
+def sparkSqlQuery(glueContext, query, mapping, transformation_ctx) -> DynamicFrame:
+    for alias, frame in mapping.items():
+        frame.toDF().createOrReplaceTempView(alias)
+    result = spark.sql(query)
+    return DynamicFrame.fromDF(result, glueContext, transformation_ctx)
 args = getResolvedOptions(sys.argv, ['JOB_NAME'])
 sc = SparkContext()
 glueContext = GlueContext(sc)
@@ -20,15 +26,25 @@ DEFAULT_DATA_QUALITY_RULESET = """
     ]
 """
 
-# Script generated for node accelerometer landing
-accelerometerlanding_node1779539897830 = glueContext.create_dynamic_frame.from_options(format_options={"multiLine": "false"}, connection_type="s3", format="json", connection_options={"paths": ["s3://stedi-human-sample/accelerometer/landing/"], "recurse": True}, transformation_ctx="accelerometerlanding_node1779539897830")
+# Script generated for node accelerometer_landing
+accelerometer_landing_node1779694199286 = glueContext.create_dynamic_frame.from_options(format_options={"multiLine": "false"}, connection_type="s3", format="json", connection_options={"paths": ["s3://stedi-lake-house-mohan/accelerometer_landing/"], "recurse": True}, transformation_ctx="accelerometer_landing_node1779694199286")
 
-# Script generated for node accelerometer landing to trusted
-accelerometerlandingtotrusted_node1779539905168 = ApplyMapping.apply(frame=accelerometerlanding_node1779539897830, mappings=[("user", "string", "user", "string"), ("timestamp", "long", "timestamp", "long"), ("x", "double", "x", "double"), ("y", "double", "y", "double"), ("z", "double", "z", "double")], transformation_ctx="accelerometerlandingtotrusted_node1779539905168")
+# Script generated for node customer_trusted
+customer_trusted_node1779694198614 = glueContext.create_dynamic_frame.from_options(format_options={"multiLine": "false"}, connection_type="s3", format="json", connection_options={"paths": ["s3://stedi-lake-house-mohan/customer_trusted/"], "recurse": True}, transformation_ctx="customer_trusted_node1779694198614")
 
-# Script generated for node trusted acclerometer zone
-EvaluateDataQuality().process_rows(frame=accelerometerlandingtotrusted_node1779539905168, ruleset=DEFAULT_DATA_QUALITY_RULESET, publishing_options={"dataQualityEvaluationContext": "EvaluateDataQuality_node1779537994871", "enableDataQualityResultsPublishing": True}, additional_options={"dataQualityResultsPublishing.strategy": "BEST_EFFORT", "observations.scope": "ALL"})
-trustedacclerometerzone_node1779539908476 = glueContext.write_dynamic_frame.from_options(frame=accelerometerlandingtotrusted_node1779539905168, connection_type="s3", format="json", connection_options={"path": "s3://stedi-human-sample/accelerometer/trusted/", "compression": "snappy", "partitionKeys": []}, transformation_ctx="trustedacclerometerzone_node1779539908476")
+# Script generated for node SQL Query
+SqlQuery0 = '''
+select a.*
+from a
+inner join c
+on a.user = c.email
+'''
+SQLQuery_node1779694209067 = sparkSqlQuery(glueContext, query = SqlQuery0, mapping = {"a":accelerometer_landing_node1779694199286, "c":customer_trusted_node1779694198614}, transformation_ctx = "SQLQuery_node1779694209067")
 
+# Script generated for node accelerometer_trusted
+EvaluateDataQuality().process_rows(frame=SQLQuery_node1779694209067, ruleset=DEFAULT_DATA_QUALITY_RULESET, publishing_options={"dataQualityEvaluationContext": "EvaluateDataQuality_node1779694161125", "enableDataQualityResultsPublishing": True}, additional_options={"dataQualityResultsPublishing.strategy": "BEST_EFFORT", "observations.scope": "ALL"})
+accelerometer_trusted_node1779694211914 = glueContext.getSink(path="s3://stedi-lake-house-mohan/accelerometer_trusted/", connection_type="s3", updateBehavior="UPDATE_IN_DATABASE", partitionKeys=[], enableUpdateCatalog=True, transformation_ctx="accelerometer_trusted_node1779694211914")
+accelerometer_trusted_node1779694211914.setCatalogInfo(catalogDatabase="stedi_db",catalogTableName="customer_trusted")
+accelerometer_trusted_node1779694211914.setFormat("json")
+accelerometer_trusted_node1779694211914.writeFrame(SQLQuery_node1779694209067)
 job.commit()
-
